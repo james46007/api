@@ -37,35 +37,45 @@ class UserController extends Controller
     public function register(Request $request){
         //Recoge los datos del usuario por post
         $json = $request->input('json',null);
-        $params = json_decode($json);//objeto
         $params_array = json_decode($json,true);//array
+        //Limpiar datos de espacios de los parametros
+        $params_array = array_map('trim',$params_array);
 
-        if(!empty($params) && !empty($params_array)){
-            //Limpiar datos de espacios de los parametros
-            // $params_array = array_map('trim',$params_array);
+        if(!empty($params_array)){
 
             //validar datos
             $validate = \Validator::make($params_array,[
-                'name' => 'required|alpha',
-                'surname' => 'required|alpha',
-                'email' => 'required|email',
+                'name' => 'required',
+                'surname' => 'required',
+                'email' => 'required',
                 'password' => 'required'
             ]);
-
-            $user_exit = User::where('email', $params_array['email'])->first();
-            
-            
-            if($validate->fails() || !empty($user_exit) ){
+            if($validate->fails()){
                 $data =array(
                     'status' => 'error',
-                    'code' => 404,
+                    'code' => 100,
+                    'message' => 'Campos vacios.',
+                    'errors' => $validate->errors(),
+                    'user'  =>  $user_exit
+                );
+                return response()->json($data);
+            }
+
+            $user_exit = User::where('email', $params_array['email'])->where('estado',1)->first();
+            
+            
+            if(!empty($user_exit) ){
+                $data =array(
+                    'status' => 'error',
+                    'code' => 100,
                     'message' => 'El correo electronico ya esta registrado.',
                     'errors' => $validate->errors(),
                     'user'  =>  $user_exit
                 );
-            }else{
+                return response()->json($data);
+            }
 
-                $pwd = hash('sha256',$params->password);
+                $pwd = hash('sha256',$params_array['password']);
 
                 $user = new User();
 
@@ -92,16 +102,16 @@ class UserController extends Controller
                     'message' => 'El usuario se ha creado correctamente.',
                     'user' => $user
                 );
-            }
+            
         }else{
             $data =array(
                     'status' => 'error',
-                    'code' => 404,
+                    'code' => 100,
                     'message' => 'Los datos enviados no son correctos'
                 );
         }
 
-        return response()->json($data,$data['code']);
+        return response()->json($data);
     }
 
     public function login(Request $request){
@@ -118,8 +128,8 @@ class UserController extends Controller
         if($validate->fails()){
             $signup =array(
                 'status' => 'error',
-                'code' => 404,
-                'message' => 'El usuario no pudo identificarse',
+                'code' => 100,
+                'message' => 'Campos vacios.',
                 'errors' => $validate->errors()
             );
         }else{
@@ -131,14 +141,12 @@ class UserController extends Controller
             }
         }
 
-        return response()->json($signup,200);
+        return response()->json($signup);
     }
 
     public function totalUsuarios(){
-        // $usuariosTotal = User::all();
-        $sql = 'SELECT * FROM users  where estado=1';
-        $usuariosTotal = DB::select($sql);
-        return response()->json($usuariosTotal,200);
+        $usuariosTotal = User::where('estado',1)->get();
+        return response()->json($usuariosTotal);
     }
 
     public function update(Request $request){
@@ -154,27 +162,36 @@ class UserController extends Controller
         // if($checkToken && !empty($params_array)){
         if(!empty($params_array)){
 
-
             $user = $jwtAuth->checkToken($token,true);
 
             $id = $params_array['id'];
 
+            //Limpiar datos de espacios de los parametros
+            unset($params_array['roles']);
+            $params_array = array_map('trim',$params_array);
+
+            $validate = \Validator::make($params_array,[
+                'name' => 'required|alpha',
+                'surname' => 'required|alpha',
+                'email' => 'required|email|unique:users,email,'.$id
+            ]);
+            if($validate->fails()){
+                $data =array(
+                    'status' => 'error',
+                    'code' => 100,
+                    'message' => 'Campos requeridos.',
+                    'errors' => $validate->errors()
+                );
+                return response()->json($data);
+            }
             
             try {
-                $validate = \Validator::make($params_array,[
-                    'name' => 'required|alpha',
-                    'surname' => 'required|alpha',
-                    'email' => 'required|email|unique:users,'.$id
-                ]);
-
-                $rolesCambio = $params_array['roles'];
 
                 //quitar los datos que no quiero actualizar
                 unset($params_array['id']);
                 unset($params_array['password']);
                 unset($params_array['create_at']);
-                unset($params_array['remenber_token']);
-                unset($params_array['roles']);
+                unset($params_array['remenber_token']);                
 
                 //actualizar el usuario en la bbd
                 $user_update = User::where('id',$id)->update($params_array);
@@ -182,12 +199,13 @@ class UserController extends Controller
                 $data = array(
                     'code' => 200,
                     'status' => 'success',
+                    'message' => 'Se actualizo correctamente el usuario.',
                     'user' => $user_update,
                     'changes' => $params_array,
                 );
             } catch (\Throwable $th) {
                 $data = array(
-                    'code' => 400,
+                    'code' => 100,
                     'status' => 'error',
                     'message' => 'El correo ya esta registrado con otro usuario.',
                 );
@@ -196,12 +214,12 @@ class UserController extends Controller
 
         }else{
             $data = array(
-                'code' => 400,
+                'code' => 100,
                 'status' => 'error',
-                'message' => 'El usuari no esta identificado.'
+                'message' => 'Los datos enviados no son correctos.'
             );
         }
-        return response()->json($data,$data['code']);
+        return response()->json($data);
     }
 
     public function upload(Request $request){
@@ -248,11 +266,20 @@ class UserController extends Controller
     }
 
     public function borrarUsuario($id){
-        $sql = 'UPDATE users SET estado=0 where id = '.$id;
-        // $sql = 'DELETE FROM users where id = '.$id;
-        $usuario_eliminado = DB::select($sql);
+        // $sql = 'UPDATE users SET estado=0 where id = '.$id;
+        // // $sql = 'DELETE FROM users where id = '.$id;
+        // $usuario_eliminado = DB::select($sql);
 
-        return response()->json($usuario_eliminado,200);
+        $usuario_eliminado = User::where('id',$id)->update(['estado' => 0]);
+
+        $data =array(
+            'status' => 'error',
+            'code' => 200,
+            'message' => 'Se elimino el usuario.',
+            'usuario_eliminado'  =>  $usuario_eliminado
+        );
+
+        return response()->json($data);
     }
 
     // ****************************
@@ -273,7 +300,7 @@ class UserController extends Controller
                 'message' => 'El usuario no existe.'
             );
         }
-        return response()->json($data, $data['code']);
+        return response()->json($data);
     }
 
     public function usuario($id){
@@ -318,23 +345,30 @@ class UserController extends Controller
         $sql = 'UPDATE user_roles SET estado=0 where id='.$rolId;
         $categoria_eliminado = DB::select($sql);
 
-        return response()->json($categoria_eliminado,200);
+        $data =array(
+            'status' => 'error',
+            'code' => 200,
+            'message' => 'Se elimino el rol del usuario.',
+            'categoriaEliminada'  =>  $categoria_eliminado
+        );
+
+        return response()->json($data);
     }
 
     public function agregarRolUsuario($usuarioId, $rolId){
         $data =array(
             'status' => 'error',
-            'code' => 404,
+            'code' => 100,
             'message' => 'Los datos enviados no son correctos'
         );
 
-        $sql = "SELECT * FROM user_roles WHERE user_id = ".$usuarioId." and rol_id = ".$rolId;
-        $disfraz_existe = DB::select($sql);
+        // $sql = "SELECT * FROM user_roles WHERE user_id = ".$usuarioId." and rol_id = ".$rolId;
+        $disfraz_existe = User_Roles::where('user_id',$usuarioId)->where('rol_id',$rolId)->where('estado',1)->first();
 
-        if(count($disfraz_existe)>0 ){
+        if(!empty($disfraz_existe) ){
             $data =array(
                 'status' => 'error',
-                'code' => 200,
+                'code' => 100,
                 'message' => 'El rol ya esta registrado con el usuario.',
                 'categoria'  =>  $disfraz_existe
             );
@@ -356,7 +390,7 @@ class UserController extends Controller
             );
         }
 
-        return response()->json($data,$data['code']);
+        return response()->json($data);
     }
 
     public function borrarRol($id){
@@ -366,7 +400,50 @@ class UserController extends Controller
         return response()->json($rolEliminado,200);
     }
 
-    public function agregarRol($rol){
+    // public function agregarRol($rol){
+
+    //     $sql = "SELECT * FROM roles WHERE name = '".$rol."'";
+    //     $rol_existe = DB::select($sql);
+
+    //     if(count($rol_existe)>0 ){
+    //         $data = array(
+    //             'code' => 200,
+    //             'status' => 'error',
+    //             'message' => 'El rol ya existe.'
+    //         );
+    //     }else{
+    //         $nuevoRol = new Rol();
+    //         $nuevoRol->name = $rol;
+    //         $nuevoRol->save();
+    //         $data = array(
+    //             'code' => 200,
+    //             'status' => 'success',
+    //             'message' => 'El rol se creo correctamente.'
+    //         );
+    //     }        
+
+    //     return response()->json($data,200);
+    // }
+    public function agregarRol(Request $request){
+        $token = $request->header('Authorization');
+        // //Recoge los datos del usuario por post
+        $json = $request->input('json',null);
+        // $params = json_decode($json);//objeto
+        $params_array = json_decode($json,true);//array
+        // $params_array =  (array) $request;//array
+        $data = array(
+                'id'=>0,'name'=>'prueba', 'estado'=>0
+            );
+        $nuevoRol = DB::table('roles')->insert($params_array);
+        // $data = array(
+        //     'code' => 200,
+        //     'status' => 'error',
+        //     'token' => $token,
+        //     'request' => $params_array,
+        //     'nuevoRol' => $nuevoRol,
+        // );
+
+        return response()->json($nuevoRol,200);
 
         $sql = "SELECT * FROM roles WHERE name = '".$rol."'";
         $rol_existe = DB::select($sql);

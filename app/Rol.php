@@ -10,7 +10,9 @@ class Rol extends Model
     protected $table = "roles";// <-- El nombre personalizado
 
     protected $fillable = [
-        'name'
+        'id',
+        'name',
+        'estado'
     ];
     
 }

@@ -67,7 +67,7 @@ Route::get('/articulo/{id}','ArticuloController@getArticulo');
 // roles
 Route::get('/roles','UserController@totalRoles');
 Route::get('/rol/{id}','UserController@getRol');
-Route::post('/agregar/rol/{rol}','UserController@agregarRol');
+Route::post('/agregar/rol','UserController@agregarRol');
 Route::put('/rol/update','UserController@actualizarRol');
 Route::delete('/borrar/rol/{id}','UserController@borrarRol');
 
@@ -108,8 +108,12 @@ Route::post('/habilitar/articulo','InventarioController@habilitar');
 
 
 // clientes
+Route::get('/clientes','CustomerController@getClientes');
+Route::get('/clienteById/{id}','CustomerController@getClienteByID');
 Route::get('/cliente/{cedula}','CustomerController@getCliente');
 Route::post('/ingresar/cliente','CustomerController@setCliente');
+Route::put('/actualizar/cliente','CustomerController@updateCliente');
+Route::delete('/borrar/cliente/{id}','CustomerController@borrarCliente');
 
 // Reportes
 Route::get('/reportes/clientes/{desde}/{hasta}','InventarioController@reporteUsuariosFecha');
@@ -121,7 +125,7 @@ Route::get('/categoria/disfraces/{id}','DisfrazController@categoriaDisfraces');
 // IVA
 Route::get('/iva','IvaController@getIva');
 Route::get('/ivas','IvaController@getIvas');
-Route::post('/nuevo/iva/{iva}','IvaController@setIva');
+Route::post('/nuevo/iva','IvaController@setIva');
 Route::post('/activar/iva/{idIva}','IvaController@setIvas');
 
 

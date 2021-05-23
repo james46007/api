@@ -13,10 +13,9 @@ class InventarioController extends Controller
     public function register(Request $request){
         //Recoge los datos del usuario por post
         $json = $request->input('json',null);
-        $params = json_decode($json);//objeto
         $params_array = json_decode($json,true);//array
 
-        if(!empty($params) && !empty($params_array)){
+        if(!empty($params_array)){
             //Limpiar datos de espacios de los parametros
             // $params_array = array_map('trim',$params_array);
 
@@ -81,7 +80,7 @@ class InventarioController extends Controller
                 );
         }
 
-        return response()->json($data,$data['code']);
+        return response()->json($data);
     }
 
     public function listar(){
@@ -116,7 +115,7 @@ class InventarioController extends Controller
         inventory.id,
         articles.name,
         articles.code,
-        IF(inventory.description = "DISPONIBLE",(inventory.entrada - inventory.entrada),inventory.entrada ) AS devuelto,
+        IF(inventory.description = "DISPONIBLE" || inventory.description = "AGREGAR",(inventory.entrada - inventory.entrada),inventory.entrada ) AS devuelto,
         inventory.salida AS alquiler,
         inventory.existe AS totalDisponible
       FROM
@@ -574,7 +573,7 @@ class InventarioController extends Controller
         $data =array(
             'status' => 'success',
             'code' => 200,
-            'message' => 'Articulo devuelto.',
+            'message' => 'Articulo disponible.',
             'productoDisponibles' => $productoDisponible,
             'productosDevueltos' => $producto
         );    
@@ -617,11 +616,11 @@ class InventarioController extends Controller
         }else{
             $data =array(
                 'status' => 'error',
-                'code' => 200,
+                'code' => 100,
                 'message' => 'No hay clientes de alquiler en el rago de fecha.',
                 'data' => $usuariosAlquiler
             );  
         }
-        return response()->json($data,$data['code']);
+        return response()->json($data);
     }
 }
