@@ -11,4 +11,8 @@ class Article extends Model
     protected $fillable = [
         'name','code','price'
     ];
+
+    public function disfraces(){
+        return $this->belongsToMany(Disfraz::class,'articles_costume','article_id','costume_id')->withTimestamps();
+    }
 }

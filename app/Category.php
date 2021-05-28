@@ -11,4 +11,8 @@ class Category extends Model
     protected $fillable = [
         'name',
     ];
+
+    public function disfraces(){
+        return $this->belongsToMany(Disfraz::class,'costumes_category','category_id','costume_id')->withTimestamps();
+    }
 }
