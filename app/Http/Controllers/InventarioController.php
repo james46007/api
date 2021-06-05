@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Inventario;
 use App\Factura_Detalle;
+use App\ArticleQuantity;
 
 class InventarioController extends Controller
 {
@@ -65,6 +66,22 @@ class InventarioController extends Controller
 
                 $producto->save();
 
+                $consultaArticulo = ArticleQuantity::where('article_id',$params_array['article_id'])->first();
+                if($consultaArticulo == null){
+                    $cantidadArticulos = new ArticleQuantity();
+                    $cantidadArticulos->article_id = $params_array['article_id'];
+                    $cantidadArticulos->alquiler = 0;
+                    $cantidadArticulos->devuelto = 0;
+                    $cantidadArticulos->totalDisponible = $producto->existe;
+                    $cantidadArticulos->save();
+                }else{
+                    // $consultaArticulo->article_id = $params_array['article_id'];
+                    $consultaArticulo->alquiler = $consultaArticulo->alquiler;
+                    $consultaArticulo->devuelto = $consultaArticulo->devuelto;
+                    $consultaArticulo->totalDisponible = $producto->existe;
+                    $consultaArticulo->update();
+                }
+
                 $data =array(
                     'status' => 'success',
                     'code' => 200,
@@ -111,18 +128,29 @@ class InventarioController extends Controller
     }
 
     public function listarInventario(){
+    //     $sql = 'SELECT 
+    //     inventory.id,
+    //     articles.name,
+    //     articles.code,
+    //     IF(inventory.description = "DISPONIBLE" || inventory.description = "AGREGAR",(inventory.entrada - inventory.entrada),inventory.entrada ) AS devuelto,
+    //     inventory.salida AS alquiler,
+    //     inventory.existe AS totalDisponible
+    //   FROM
+    //     articles
+    //     INNER JOIN inventory ON (articles.id = inventory.article_id)
+    //   WHERE
+    //     inventory.estado = 1';
         $sql = 'SELECT 
-        inventory.id,
+        articles.id,
         articles.name,
         articles.code,
-        IF(inventory.description = "DISPONIBLE" || inventory.description = "AGREGAR",(inventory.entrada - inventory.entrada),inventory.entrada ) AS devuelto,
-        inventory.salida AS alquiler,
-        inventory.existe AS totalDisponible
+        article_quantities.devuelto,
+        article_quantities.alquiler,
+        article_quantities.totalDisponible
       FROM
         articles
-        INNER JOIN inventory ON (articles.id = inventory.article_id)
-      WHERE
-        inventory.estado = 1';
+        INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)';
+
         $inventario = DB::select($sql);
     
         return response()->json($inventario,200);
@@ -204,6 +232,12 @@ class InventarioController extends Controller
 
                 $facturaDetalle->save();
 
+                $consultaArticulo = ArticleQuantity::where('article_id',$params_array['article_id'])->first();
+                $consultaArticulo->alquiler = $producto->salida + $consultaArticulo->alquiler;
+                $consultaArticulo->devuelto = $consultaArticulo->devuelto;
+                $consultaArticulo->totalDisponible = $producto->existe;
+                $consultaArticulo->update();
+
                 $data =array(
                     'status' => 'success',
                     'code' => 200,
@@ -228,12 +262,14 @@ class InventarioController extends Controller
         articles.name,
         articles.code,
         articles.price,
-        inventory.existe,
+      /*  inventory.existe,*/
         inventory.exi_val_uni,
-        inventory.exi_val_tot
+        inventory.exi_val_tot,
+        article_quantities.totalDisponible as existe
       FROM
         articles
         INNER JOIN inventory ON (articles.id = inventory.article_id)
+        INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
       WHERE
         inventory.estado = 1
         ";
@@ -257,16 +293,18 @@ class InventarioController extends Controller
         articles.name,
         articles.code,
         articles.price,
-        inventory.existe,
+      /*  inventory.existe,*/
         inventory.exi_val_uni,
-        inventory.exi_val_tot
+        inventory.exi_val_tot,
+        article_quantities.totalDisponible as existe
       FROM
         articles
         INNER JOIN inventory ON (articles.id = inventory.article_id)
         INNER JOIN articles_costume ON (articles.id = articles_costume.article_id)
         INNER JOIN costumes ON (articles_costume.costume_id = costumes.id)
+        INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
       WHERE
-        inventory.estado = 1 and
+        inventory.estado = 1 AND 
         articles.id = {$articulo}
         ";
 
@@ -280,6 +318,54 @@ class InventarioController extends Controller
         );
 
         return response()->json($data,$data['code']);
+
+    }
+
+    public function verificarArticuloDisponible(Request $request){
+        $mesajes = array();
+
+        $json = $request->input('json',null);
+        $params = json_decode($json);//objeto
+        $params_array = json_decode($json,true);//array
+        
+        foreach($params as $value){
+            $sql = "SELECT 
+            /*  inventory.existe,*/
+              article_quantities.totalDisponible as existe
+            FROM
+              articles
+              INNER JOIN inventory ON (articles.id = inventory.article_id)
+              INNER JOIN articles_costume ON (articles.id = articles_costume.article_id)
+              INNER JOIN costumes ON (articles_costume.costume_id = costumes.id)
+              INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
+            WHERE
+              inventory.estado = 1 AND 
+              articles.id = {$value->article_id}
+                ";
+
+            $articulosDisponibles = DB::select($sql);
+
+            if($articulosDisponibles[0]->existe < $value->salida){
+                array_push($mesajes, "Existe ".$articulosDisponibles[0]->existe." unidades de ".$value->name);
+            }
+        }
+
+        if(count($mesajes)){
+            $data =array(
+                'status' => 'success',
+                'code' => 100,
+                'message' => $mesajes
+            );
+    
+            return response()->json($data);
+        }
+        $data =array(
+            'status' => 'success',
+            'code' => 200,
+            'message' => $mesajes
+        );
+
+        return response()->json($data);
 
     }
 
@@ -366,6 +452,12 @@ class InventarioController extends Controller
                 $producto->estado = $params_array['quantity'] - $params_array['entrada'] != 0 ? 0 : 1;
 
                 $producto->save();
+
+                $consultaArticulo = ArticleQuantity::where('article_id',$params_array['article_id'])->first();
+                $consultaArticulo->alquiler = $consultaArticulo->alquiler-$params_array['quantity'];
+                $consultaArticulo->devuelto = $producto->entrada;
+                $consultaArticulo->totalDisponible = $producto->existe;
+                $consultaArticulo->update();
 
                 // ********************
                 if($params_array['quantity'] - $params_array['entrada'] != 0){
@@ -567,7 +659,11 @@ class InventarioController extends Controller
             $producto->save();
         }
         
-
+        $consultaArticulo = ArticleQuantity::where('article_id',$params_array['article_id'])->first();
+        $consultaArticulo->alquiler = $consultaArticulo->alquiler;
+        $consultaArticulo->devuelto = $params_array['maximo'] - $params_array['entrada'] != 0 ? $producto->entrada : 0;
+        $consultaArticulo->totalDisponible = $params_array['maximo'] - $params_array['entrada'] != 0 ? $producto->existe : $productoDisponible->existe;
+        $consultaArticulo->update();
         
 
         $data =array(
@@ -604,6 +700,79 @@ class InventarioController extends Controller
                 {$desde}
             AND
                 {$hasta}";
+        $usuariosAlquiler = DB::select($sql);
+
+        if(count($usuariosAlquiler) >0){
+            $data =array(
+                'status' => 'success',
+                'code' => 200,
+                'message' => 'Lista de clientes alquiler.',
+                'data' => $usuariosAlquiler
+            );    
+        }else{
+            $data =array(
+                'status' => 'error',
+                'code' => 100,
+                'message' => 'No hay clientes de alquiler en el rago de fecha.',
+                'data' => $usuariosAlquiler
+            );  
+        }
+        return response()->json($data);
+    }
+
+    public function reporteArticulosFecha($desde, $hasta){
+        $sql = "SELECT 
+        articles.name,
+                    count(invoice_detail.article_id) as idArticle,
+                    sum(invoice_detail.quantity) as cantidad
+      FROM
+        invoice
+        INNER JOIN invoice_detail ON (invoice.id = invoice_detail.invoice_id)
+        INNER JOIN articles ON (invoice_detail.article_id = articles.id)
+      WHERE
+        invoice.`date` BETWEEN {$desde} AND {$hasta}
+      GROUP BY
+        articles.name";
+        $usuariosAlquiler = DB::select($sql);
+
+        if(count($usuariosAlquiler) >0){
+            $data =array(
+                'status' => 'success',
+                'code' => 200,
+                'message' => 'Lista de clientes alquiler.',
+                'data' => $usuariosAlquiler
+            );    
+        }else{
+            $data =array(
+                'status' => 'error',
+                'code' => 100,
+                'message' => 'No hay clientes de alquiler en el rago de fecha.',
+                'data' => $usuariosAlquiler
+            );  
+        }
+        return response()->json($data);
+    }
+
+    public function reporteArticuloFecha($desde, $hasta, $articulo){
+        $sql = "SELECT 
+                    articles.name,
+                    count(invoice_detail.article_id) as idArticle,
+                    sum(invoice_detail.quantity) as cantidad
+                FROM
+                invoice
+                INNER JOIN invoice_detail ON (invoice.id = invoice_detail.invoice_id)
+                INNER JOIN articles ON (invoice_detail.article_id = articles.id)
+                WHERE
+                invoice_detail.article_id = {$articulo}
+                and
+                invoice.`date` 
+                
+                BETWEEN 
+                    {$desde}
+                AND
+                    {$hasta}
+                group by
+                articles.name";
         $usuariosAlquiler = DB::select($sql);
 
         if(count($usuariosAlquiler) >0){

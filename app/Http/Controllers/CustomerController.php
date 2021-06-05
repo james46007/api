@@ -225,11 +225,22 @@ class CustomerController extends Controller
                     'email' => 'required',
                 ]);
 
+                if($validate->fails()){
+                    $data =array(
+                        'status' => 'error',
+                        'code' => 100,
+                        'message' => 'Campos incorrectos.',
+                        'errors' => $validate->errors(),
+                        'cliente'  =>  $cliente_existe
+                    );
+                    return response()->json($data);
+                }
+
                 $id = $params_array['id'];
                 $cliente_existe = Customer::where("identity_card",$params_array['identity_card'])
-                                        ->where("id","<>",$id)->first();
+                                        ->where("id","<>",$id)->where('estado',1)->first();
 
-                if($validate->fails() || !empty($cliente_existe) ){
+                if(!empty($cliente_existe) ){
                     $data =array(
                         'status' => 'error',
                         'code' => 100,
@@ -237,6 +248,7 @@ class CustomerController extends Controller
                         'errors' => $validate->errors(),
                         'cliente'  =>  $cliente_existe
                     );
+                    return response()->json($data);
                 }else{
 
                     //quitar los datos que no quiero actualizar

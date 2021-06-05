@@ -90,6 +90,7 @@ Route::get('/ver/inventario','InventarioController@listarInventario');
 Route::post('/alquilar/{facturaID}','InventarioController@alquiler');
 Route::get('/articulos/disponibles','InventarioController@disfracesDisponibles');
 Route::get('/articulo/disponible/{id}','InventarioController@articuloDisponible');
+Route::post('/verificar/articulos/disponibles','InventarioController@verificarArticuloDisponible');
 
 // factura
 Route::post('/facturar','FacturaController@registrar');
@@ -117,6 +118,8 @@ Route::delete('/borrar/cliente/{id}','CustomerController@borrarCliente');
 
 // Reportes
 Route::get('/reportes/clientes/{desde}/{hasta}','InventarioController@reporteUsuariosFecha');
+Route::get('/reportes/articulos/{desde}/{hasta}','InventarioController@reporteArticulosFecha');
+Route::get('/reportes/articulo/{desde}/{hasta}/{articulo}','InventarioController@reporteArticuloFecha');
 
 
 // web

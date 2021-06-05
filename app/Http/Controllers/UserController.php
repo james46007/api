@@ -173,7 +173,7 @@ class UserController extends Controller
             $validate = \Validator::make($params_array,[
                 'name' => 'required|alpha',
                 'surname' => 'required|alpha',
-                'email' => 'required|email|unique:users,email,'.$id
+                'email' => 'required|email'
             ]);
             if($validate->fails()){
                 $data =array(
@@ -321,7 +321,7 @@ class UserController extends Controller
     // ************
 
     public function totalRoles(){
-        $sql = 'SELECT id,name FROM roles';
+        $sql = 'SELECT id,name FROM roles where estado = 1';
         $roles_total = DB::select($sql);
 
         return response()->json($roles_total,200);

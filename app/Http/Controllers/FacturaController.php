@@ -137,13 +137,13 @@ class FacturaController extends Controller
         }else{
             $data =array(
                 'status' => 'warning',
-                'code' => 200,
+                'code' => 100,
                 'message' => 'El cliente no tiene nada alquilado.',
                 'cliente' => $cliente
             );
         }
 
-        return response()->json($data,$data['code']);            
+        return response()->json($data);            
     }
 
     public function quitarClienteAlquiler($id){
