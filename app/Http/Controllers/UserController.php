@@ -184,6 +184,22 @@ class UserController extends Controller
                 );
                 return response()->json($data);
             }
+
+            $user_exit = User::where('email', $params_array['email'])
+            ->where('id','<>',$id)
+            ->where('estado',1)->first();
+            
+            
+            if(!empty($user_exit) ){
+                $data =array(
+                    'status' => 'error',
+                    'code' => 100,
+                    'message' => 'El correo electronico ya esta registrado.',
+                    'errors' => $validate->errors(),
+                    'user'  =>  $user_exit
+                );
+                return response()->json($data);
+            }
             
             try {
 

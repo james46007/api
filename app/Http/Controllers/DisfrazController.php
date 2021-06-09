@@ -112,6 +112,8 @@ class DisfrazController extends Controller
             // $categoria_eliminado = DB::select($sql);
 
             $categoria_eliminado = Disfraz::where('id',$id)->update(['estado' => 0]);
+            Disfraz_Articulo::where('costume_id',$id)->update(['estado'=>0]);
+            Disfraz_Categoria::where('costume_id',$id)->update(['estado'=>0]);
             $data = array(
                 'code' => 200,
                 'message' => 'Se ha eliminado correctamente.',
