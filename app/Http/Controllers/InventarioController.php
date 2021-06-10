@@ -293,19 +293,16 @@ class InventarioController extends Controller
         articles.name,
         articles.code,
         articles.price,
-      /*  inventory.existe,*/
         inventory.exi_val_uni,
         inventory.exi_val_tot,
         article_quantities.totalDisponible as existe
       FROM
-        articles
+        article_quantities
+        INNER JOIN articles ON (article_quantities.article_id = articles.id)
         INNER JOIN inventory ON (articles.id = inventory.article_id)
-        INNER JOIN articles_costume ON (articles.id = articles_costume.article_id)
-        INNER JOIN costumes ON (articles_costume.costume_id = costumes.id)
-        INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
       WHERE
         inventory.estado = 1 AND 
-        articles.id = {$articulo}
+        article_quantities.article_id = {$articulo}
         ";
 
         $articulosDisponibles = DB::select($sql);
@@ -330,17 +327,14 @@ class InventarioController extends Controller
         
         foreach($params as $value){
             $sql = "SELECT 
-            /*  inventory.existe,*/
-              article_quantities.totalDisponible as existe
-            FROM
-              articles
-              INNER JOIN inventory ON (articles.id = inventory.article_id)
-              INNER JOIN articles_costume ON (articles.id = articles_costume.article_id)
-              INNER JOIN costumes ON (articles_costume.costume_id = costumes.id)
-              INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
-            WHERE
-              inventory.estado = 1 AND 
-              articles.id = {$value->article_id}
+            article_quantities.totalDisponible as existe
+          FROM
+            inventory
+            INNER JOIN articles ON (inventory.article_id = articles.id)
+            INNER JOIN article_quantities ON (articles.id = article_quantities.article_id)
+          WHERE
+            inventory.estado = 1 AND 
+            article_quantities.article_id = {$value->article_id}
                 ";
 
             $articulosDisponibles = DB::select($sql);
@@ -739,14 +733,14 @@ class InventarioController extends Controller
             $data =array(
                 'status' => 'success',
                 'code' => 200,
-                'message' => 'Lista de clientes alquiler.',
+                'message' => 'Lista de articulos alquiler.',
                 'data' => $usuariosAlquiler
             );    
         }else{
             $data =array(
                 'status' => 'error',
                 'code' => 100,
-                'message' => 'No hay clientes de alquiler en el rago de fecha.',
+                'message' => 'No hay articulos de alquiler en el rago de fecha.',
                 'data' => $usuariosAlquiler
             );  
         }
@@ -779,14 +773,14 @@ class InventarioController extends Controller
             $data =array(
                 'status' => 'success',
                 'code' => 200,
-                'message' => 'Lista de clientes alquiler.',
+                'message' => 'Lista de articulos alquiler.',
                 'data' => $usuariosAlquiler
             );    
         }else{
             $data =array(
                 'status' => 'error',
                 'code' => 100,
-                'message' => 'No hay clientes de alquiler en el rago de fecha.',
+                'message' => 'No hay articulos de alquiler en el rago de fecha.',
                 'data' => $usuariosAlquiler
             );  
         }

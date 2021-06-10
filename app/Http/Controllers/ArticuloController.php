@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Article;
 use App\Disfraz_Articulo;
+use App\ArticleQuantity;
 use Illuminate\Support\Facades\DB;
 
 class ArticuloController extends Controller
@@ -138,7 +139,23 @@ class ArticuloController extends Controller
                 return response()->json($data);
             }
 
+            $alquiler = ArticleQuantity::where('article_id',$id)->where('alquiler','>',0)->first();
+            $devuelto = ArticleQuantity::where('article_id',$id)->where('devuelto','>',0)->first();
+            $totalDisponible = ArticleQuantity::where('article_id',$id)->where('totalDisponible','>',0)->first();
+            
+            
+            
+            if(!empty($alquiler) || !empty($devuelto) || !empty($totalDisponible)){
+                $data = array(
+                    'code' => 100,
+                    'message' => 'No puede borrar tiene articulos en el inventario.',
+                    'data' => $alquiler,
+                );
+                return response()->json($data);
+            }
+
             $articulo_eliminado = Article::where('id',$id)->update(['estado' => 0]);
+            ArticleQuantity::where('article_id',$id)->delete();
             $data = array(
                 'code' => 200,
                 'message' => 'Se ha eliminado correctamente.',

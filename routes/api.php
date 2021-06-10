@@ -90,7 +90,7 @@ Route::get('/ver/inventario','InventarioController@listarInventario');
 Route::post('/alquilar/{facturaID}','InventarioController@alquiler');
 Route::get('/articulos/disponibles','InventarioController@disfracesDisponibles');
 Route::get('/articulo/disponible/{id}','InventarioController@articuloDisponible');
-Route::post('/verificar/articulos/disponibles','InventarioController@verificarArticuloDisponible');
+Route::post('/verificar/articles/available','InventarioController@verificarArticuloDisponible');
 
 // factura
 Route::post('/facturar','FacturaController@registrar');
